@@ -111,7 +111,7 @@ def find_colors(path: str, num_colors: int, delta: int) -> pd.DataFrame:
     top_colors['percent'] = round(top_colors['freq'] / top_colors['freq'].sum() * 100, 2)
     for color in ['r', 'g', 'b']:
         top_colors[f'{color}_hex'] = top_colors[color].apply(lambda x: hex(x)[2:])
-        top_colors.loc[top_colors[f'{color}_hex'] == '0', f'{color}_hex'] = '00'
+        top_colors[f'{color}_hex'] = top_colors[f'{color}_hex'].str.zfill(2)
     top_colors['hex_code'] = ("#" +
                               top_colors['r_hex'] +
                               top_colors['g_hex'] +
