@@ -5,6 +5,7 @@ import pandas as pd
 from math import ceil
 
 
+# Function defining GUI layout
 def gui():
     width = 640
     height = 360
@@ -54,6 +55,7 @@ def gui():
         if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
             values = ['', 0]
             break
+        # When user chooses to browse for image, check for filetype errors and save filename
         if event == 'image_browse':
             path = values['image_browse']
             filetype = path.split('.')[-1]
@@ -65,6 +67,7 @@ def gui():
                 original_image = Image.open(path)
                 path = f"{'.'.join(path.split('.')[:-1])}.png"
                 original_image.save(path)
+            # Check whether image is bigger than GUI area and resize it is
             resize_ratio = 1
             img_x, img_y = Image.open(path).size
             ratio_x = img_x / width
@@ -72,6 +75,7 @@ def gui():
             if ratio_x > 1 or ratio_y > 1:
                 resize_ratio = max(ratio_x, ratio_y)
             window['image'].update(filename=path, subsample=ceil(resize_ratio))
+        # When user clicks "Run", check for errors and if there are none, run the find_colors function
         if event == 'run':
             window['color'].update(value='', background_color='white')
             window['hex_code'].update(value='')
@@ -82,6 +86,7 @@ def gui():
             results = find_colors(path=values['image_browse'],
                                   num_colors=values['num_colors'],
                                   delta=values['delta'])
+            # Display results of find_colors function in GUI
             for i in range(0, results.shape[0]):
                 window['color'].print('', background_color=results['hex_code'][i])
                 window['hex_code'].print(results['hex_code'][i])
@@ -92,6 +97,7 @@ def gui():
                     window['percent'].print('', font=('Helvetica', 2))
 
 
+# Function to hold possible filetypes and check if the chosen file is available
 def check_for_image(path: str) -> bool:
     filetype = path.split('.')[-1]
     if filetype not in ['jpg', 'jpeg', 'png']:
@@ -100,15 +106,21 @@ def check_for_image(path: str) -> bool:
         return True
 
 
+# Function to find the pixels in RGB format and convert to hex
 def find_colors(path: str, num_colors: int, delta: int) -> pd.DataFrame:
+    # Open the image and convert to array
     img = Image.open(path)
     img_array = np.array(img)
+    # Round to the nearest integer based on user's "delta" choice
     img_array = ((img_array / delta).round(decimals=0) * delta).astype(int)
     img_array[img_array > 255] = 255
+    # Create array of unique colors and their frequencies
     color_rgb, color_freq = np.unique(img_array.reshape(-1, 3), return_counts=True, axis=0)
+    # Create DataFrame from color arrays, sort by frequency, and trim down to the number of colors the user specified
     freq_df = pd.DataFrame({'r': color_rgb[:, 0], 'g': color_rgb[:, 1], 'b': color_rgb[:, 2], 'freq': color_freq})
     top_colors = (freq_df.sort_values(by='freq', ascending=False).reset_index(drop=True).head(int(num_colors)))
     top_colors['percent'] = round(top_colors['freq'] / top_colors['freq'].sum() * 100, 2)
+    # Convert the most common colors to hexcode
     for color in ['r', 'g', 'b']:
         top_colors[f'{color}_hex'] = top_colors[color].apply(lambda x: hex(x)[2:])
         top_colors[f'{color}_hex'] = top_colors[f'{color}_hex'].str.zfill(2)
@@ -116,8 +128,10 @@ def find_colors(path: str, num_colors: int, delta: int) -> pd.DataFrame:
                               top_colors['r_hex'] +
                               top_colors['g_hex'] +
                               top_colors['b_hex'])
+    # Return DataFrame with the most common colors, percentages, and hexcodes
     return top_colors
 
 
 if __name__ == '__main__':
+    # Initiate GUI
     gui()
